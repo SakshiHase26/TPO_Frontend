@@ -1,13 +1,13 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const LandingPage = () => {
-  const handleLoginChoice = (type) => {
+   const navigate = useNavigate();
+ const handleLoginChoice = (type) => {
     if (type === 'tpo') {
-      // Replace with your navigation logic
-      console.log('Navigate to /tpo/login');
+      navigate('/tpo/login');  // Changed from '/login' to '/tpo/login'
     } else if (type === 'admin') {
-      // Replace with your navigation logic
-      console.log('Navigate to /admin/login');
+      navigate('/admin/login');  // Changed from '/admin-login' to '/admin/login'
     }
   };
 
