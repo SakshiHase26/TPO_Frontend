@@ -285,15 +285,42 @@ const MainLayout = ({ themeMode, toggleTheme, sidebarOpen, toggleSidebar }) => {
       />
 
       {/* ========== TPO ROUTES (TPODashboard handles its own routing) ========== */}
-      <Route
+      {/* <Route
         path="/tpo/*"
         element={
           <RoleProtectedRoute allowedRoles={['tpo']}>
             <TpoDashboard />
           </RoleProtectedRoute>
         }
-      />
+      /> */}
+// In your App.js, replace the TPO ROUTES section with this:
 
+{/* ========== TPO ROUTES ========== */}
+<Route
+  path="/tpo/dashboard"
+  element={
+    <RoleProtectedRoute allowedRoles={['tpo']}>
+      <TpoDashboard />
+    </RoleProtectedRoute>
+  }
+/>
+<Route
+  path="/tpo/pc-approvals"
+  element={
+    <RoleProtectedRoute allowedRoles={['tpo']}>
+      <PCApprovals />
+    </RoleProtectedRoute>
+  }
+/>
+{/* Add other specific TPO routes here */}
+<Route
+  path="/tpo/*"
+  element={
+    <RoleProtectedRoute allowedRoles={['tpo']}>
+      <TpoDashboard />
+    </RoleProtectedRoute>
+  }
+/>
       {/* ========== SHARED ROUTES (Both Admin & TPO) ========== */}
       <Route
         path="/campus"
