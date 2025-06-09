@@ -1,15 +1,16 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 
-const ProtectedRoute = ({ 
-  children, 
-  allowedRoles = [], 
+const ProtectedRoute = ({
+  children,
+  allowedRoles = [],
   redirectPath = '/',
-  requireApproval = true 
+  requireApproval = true
 }) => {
   // Check for different user storage keys
   const tpoUserStr = localStorage.getItem('tpoUser');
   const adminUserStr = localStorage.getItem('adminUser');
+  const pcUserStr = localStorage.getItem('pcUser'); // Added PC user storage
   const userStr = localStorage.getItem('user');
   
   let user = null;
@@ -34,6 +35,15 @@ const ProtectedRoute = ({
       console.error('Error parsing adminUser:', error);
       localStorage.removeItem('adminUser');
     }
+  } else if (pcUserStr) {
+    try {
+      user = JSON.parse(pcUserStr);
+      user.role = user.role || 'pc'; // Ensure role is set
+      userSource = 'pcUser';
+    } catch (error) {
+      console.error('Error parsing pcUser:', error);
+      localStorage.removeItem('pcUser');
+    }
   } else if (userStr) {
     try {
       user = JSON.parse(userStr);
@@ -55,12 +65,17 @@ const ProtectedRoute = ({
     return <Navigate to={redirectPath} replace />;
   }
 
-  // Check if user needs approval (mainly for TPO users)
-  if (requireApproval && user.role === 'tpo' && user.status !== 'approved') {
-    console.log('ProtectedRoute - TPO user not approved, redirecting to login');
+  // Check if user needs approval (for TPO and PC users)
+  if (requireApproval && (user.role === 'tpo' || user.role === 'pc') && user.status !== 'approved') {
+    console.log(`ProtectedRoute - ${user.role.toUpperCase()} user not approved, redirecting to login`);
     // Clear the unapproved user data
-    localStorage.removeItem('tpoUser');
-    return <Navigate to="/tpo/login" replace />;
+    if (user.role === 'tpo') {
+      localStorage.removeItem('tpoUser');
+      return <Navigate to="/tpo/login" replace />;
+    } else if (user.role === 'pc') {
+      localStorage.removeItem('pcUser');
+      return <Navigate to="/pc/login" replace />;
+    }
   }
 
   // Check role permissions if specified
@@ -72,6 +87,8 @@ const ProtectedRoute = ({
       return <Navigate to="/admin/dashboard" replace />;
     } else if (user.role === 'tpo') {
       return <Navigate to="/tpo/dashboard" replace />;
+    } else if (user.role === 'pc') {
+      return <Navigate to="/pc/dashboard" replace />;
     } else {
       return <Navigate to="/" replace />;
     }
@@ -85,7 +102,7 @@ const ProtectedRoute = ({
 export const TPOProtectedRoute = ({ children }) => {
   return (
     <ProtectedRoute 
-      allowedRoles={['tpo']} 
+      allowedRoles={['tpo']}
       redirectPath="/tpo/login"
       requireApproval={true}
     >
@@ -98,9 +115,22 @@ export const TPOProtectedRoute = ({ children }) => {
 export const AdminProtectedRoute = ({ children }) => {
   return (
     <ProtectedRoute 
-      allowedRoles={['admin']} 
+      allowedRoles={['admin']}
       redirectPath="/admin/login"
       requireApproval={false}
+    >
+      {children}
+    </ProtectedRoute>
+  );
+};
+
+// Specific wrapper for PC routes
+export const PCProtectedRoute = ({ children }) => {
+  return (
+    <ProtectedRoute 
+      allowedRoles={['pc']}
+      redirectPath="/pc/login"
+      requireApproval={true}
     >
       {children}
     </ProtectedRoute>
@@ -111,7 +141,20 @@ export const AdminProtectedRoute = ({ children }) => {
 export const SharedProtectedRoute = ({ children }) => {
   return (
     <ProtectedRoute 
-      allowedRoles={['tpo', 'admin']} 
+      allowedRoles={['tpo', 'admin']}
+      redirectPath="/"
+      requireApproval={true}
+    >
+      {children}
+    </ProtectedRoute>
+  );
+};
+
+// Wrapper for routes accessible by TPO, Admin, and PC
+export const AllRolesProtectedRoute = ({ children }) => {
+  return (
+    <ProtectedRoute 
+      allowedRoles={['tpo', 'admin', 'pc']}
       redirectPath="/"
       requireApproval={true}
     >

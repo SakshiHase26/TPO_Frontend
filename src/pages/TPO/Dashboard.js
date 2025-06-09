@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Routes, Route, useLocation } from "react-router-dom";
 import { 
   Bell, 
@@ -18,146 +18,278 @@ import {
   PenTool,
   UserCheck,
   FileCheck,
-  Award
+  Award,
+  User,
+  Mail
 } from 'lucide-react';
 
 // Import your other TPO components
 import PCApprovals from '../TPO/PCApprovals';
+import TPOApprovalDashboard from '../TPO/TPOApprovalDashboard';
 import AdminApprovalPage from '../TPO/AdminApprovalPage';
 import Success from '../TPO/Success';
 
+const API_BASE_URL = 'http://localhost:5000/api/tpo/pc-approvals';
+
 // Dashboard Content Component
-const DashboardContent = () => (
-  <>
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-      {/* Stats Cards */}
-      <div className="bg-white rounded-lg shadow p-6 flex items-center space-x-4">
-        <div className="p-3 rounded-full bg-blue-100 text-blue-600">
-          <UserCheck size={24} />
-        </div>
-        <div>
-          <h3 className="text-sm font-medium text-gray-500">Pending PC Approvals</h3>
-          <p className="text-2xl font-semibold text-gray-800">12</p>
-        </div>
-      </div>
+const DashboardContent = () => {
+  const [recentPCRegistrations, setRecentPCRegistrations] = useState([]);
+  const [pcStatistics, setPcStatistics] = useState({ pending: 0, approved: 0, rejected: 0, total: 0 });
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
-      <div className="bg-white rounded-lg shadow p-6 flex items-center space-x-4">
-        <div className="p-3 rounded-full bg-green-100 text-green-600">
-          <FileCheck size={24} />
-        </div>
-        <div>
-          <h3 className="text-sm font-medium text-gray-500">Notice Approvals</h3>
-          <p className="text-2xl font-semibold text-gray-800">8</p>
-        </div>
-      </div>
+  // Fetch recent PC registrations
+  const fetchRecentPCRegistrations = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}?page=0&size=5&status=pending&sortBy=registrationDate&sortDir=desc`);
+      if (response.ok) {
+        const data = await response.json();
+        setRecentPCRegistrations(data.content || []);
+      }
+    } catch (err) {
+      console.error('Error fetching recent PC registrations:', err);
+    }
+  };
 
-      <div className="bg-white rounded-lg shadow p-6 flex items-center space-x-4">
-        <div className="p-3 rounded-full bg-purple-100 text-purple-600">
-          <PenTool size={24} />
-        </div>
-        <div>
-          <h3 className="text-sm font-medium text-gray-500">Academic Edit Requests</h3>
-          <p className="text-2xl font-semibold text-gray-800">5</p>
-        </div>
-      </div>
+  // Fetch PC statistics
+  const fetchPCStatistics = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/statistics`);
+      if (response.ok) {
+        const stats = await response.json();
+        setPcStatistics(stats);
+      }
+    } catch (err) {
+      console.error('Error fetching PC statistics:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      <div className="bg-white rounded-lg shadow p-6 flex items-center space-x-4">
-        <div className="p-3 rounded-full bg-yellow-100 text-yellow-600">
-          <Calendar size={24} />
-        </div>
-        <div>
-          <h3 className="text-sm font-medium text-gray-500">Upcoming Placements</h3>
-          <p className="text-2xl font-semibold text-gray-800">3</p>
-        </div>
-      </div>
+  // Handle quick approve/reject actions
+  const handleQuickApprove = async (pcId) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/${pcId}/approve`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          comments: 'Quick approval from dashboard',
+          approvedBy: 'TPO Admin'
+        })
+      });
 
-      <div className="bg-white rounded-lg shadow p-6 flex items-center space-x-4">
-        <div className="p-3 rounded-full bg-red-100 text-red-600">
-          <Award size={24} />
-        </div>
-        <div>
-          <h3 className="text-sm font-medium text-gray-500">Placed Students</h3>
-          <p className="text-2xl font-semibold text-gray-800">247</p>
-        </div>
-      </div>
+      if (response.ok) {
+        // Refresh the data
+        fetchRecentPCRegistrations();
+        fetchPCStatistics();
+      }
+    } catch (err) {
+      console.error('Error approving PC:', err);
+    }
+  };
 
-      <div className="bg-white rounded-lg shadow p-6 flex items-center space-x-4">
-        <div className="p-3 rounded-full bg-indigo-100 text-indigo-600">
-          <Briefcase size={24} />
-        </div>
-        <div>
-          <h3 className="text-sm font-medium text-gray-500">Registered Companies</h3>
-          <p className="text-2xl font-semibold text-gray-800">42</p>
-        </div>
-      </div>
-    </div>
-    
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Recent PC Registrations */}
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-4 border-b border-gray-200">
-          <h2 className="font-semibold text-gray-800">Recent PC Registrations</h2>
-        </div>
-        <div className="p-4">
-          <div className="space-y-4">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg">
-                <div className="flex items-center">
-                  <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600">
-                    {String.fromCharCode(64 + i)}
-                  </div>
-                  <div className="ml-3">
-                    <p className="text-sm font-medium text-gray-800">Company {i}</p>
-                    <p className="text-xs text-gray-500">company{i}@example.com</p>
-                  </div>
-                </div>
-                <div className="flex space-x-2">
-                  <button className="px-3 py-1 bg-green-100 text-green-700 text-xs rounded-full">
-                    Approve
-                  </button>
-                  <button className="px-3 py-1 bg-red-100 text-red-700 text-xs rounded-full">
-                    Reject
-                  </button>
-                </div>
-              </div>
-            ))}
+  const handleQuickReject = async (pcId) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/${pcId}/reject`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          reason: 'Quick rejection from dashboard - please resubmit with complete information',
+          rejectedBy: 'TPO Admin'
+        })
+      });
+
+      if (response.ok) {
+        // Refresh the data
+        fetchRecentPCRegistrations();
+        fetchPCStatistics();
+      }
+    } catch (err) {
+      console.error('Error rejecting PC:', err);
+    }
+  };
+
+  // Format date helper
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  useEffect(() => {
+    fetchRecentPCRegistrations();
+    fetchPCStatistics();
+  }, []);
+
+  return (
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+        {/* Stats Cards - Updated with real data */}
+        <div className="bg-white rounded-lg shadow p-6 flex items-center space-x-4">
+          <div className="p-3 rounded-full bg-blue-100 text-blue-600">
+            <UserCheck size={24} />
           </div>
-          <button className="mt-4 text-sm text-indigo-600 hover:text-indigo-800 font-medium">
-            View All Registrations
-          </button>
-        </div>
-      </div>
-
-      {/* Recent Notices */}
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-4 border-b border-gray-200">
-          <h2 className="font-semibold text-gray-800">Recent Notices</h2>
-        </div>
-        <div className="p-4">
-          <div className="space-y-4">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="border-l-4 border-indigo-500 bg-indigo-50 p-3 rounded-r-lg">
-                <p className="text-sm font-medium text-gray-800">Notice Title {i}</p>
-                <p className="text-xs text-gray-500 mt-1">Posted by Company {i} • May {10 + i}, 2025</p>
-                <div className="mt-2 flex justify-end space-x-2">
-                  <button className="px-3 py-1 bg-white text-green-700 border border-green-300 text-xs rounded-full">
-                    Approve
-                  </button>
-                  <button className="px-3 py-1 bg-white text-red-700 border border-red-300 text-xs rounded-full">
-                    Reject
-                  </button>
-                </div>
-              </div>
-            ))}
+          <div>
+            <h3 className="text-sm font-medium text-gray-500">Pending PC Approvals</h3>
+            <p className="text-2xl font-semibold text-gray-800">{loading ? '...' : pcStatistics.pending}</p>
           </div>
-          <button className="mt-4 text-sm text-indigo-600 hover:text-indigo-800 font-medium">
-            View All Notices
-          </button>
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-6 flex items-center space-x-4">
+          <div className="p-3 rounded-full bg-green-100 text-green-600">
+            <FileCheck size={24} />
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-gray-500">Approved PCs</h3>
+            <p className="text-2xl font-semibold text-gray-800">{loading ? '...' : pcStatistics.approved}</p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-6 flex items-center space-x-4">
+          <div className="p-3 rounded-full bg-red-100 text-red-600">
+            <PenTool size={24} />
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-gray-500">Rejected PCs</h3>
+            <p className="text-2xl font-semibold text-gray-800">{loading ? '...' : pcStatistics.rejected}</p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-6 flex items-center space-x-4">
+          <div className="p-3 rounded-full bg-yellow-100 text-yellow-600">
+            <Calendar size={24} />
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-gray-500">Upcoming Placements</h3>
+            <p className="text-2xl font-semibold text-gray-800">3</p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-6 flex items-center space-x-4">
+          <div className="p-3 rounded-full bg-purple-100 text-purple-600">
+            <Award size={24} />
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-gray-500">Placed Students</h3>
+            <p className="text-2xl font-semibold text-gray-800">247</p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-6 flex items-center space-x-4">
+          <div className="p-3 rounded-full bg-indigo-100 text-indigo-600">
+            <Briefcase size={24} />
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-gray-500">Total PC Registrations</h3>
+            <p className="text-2xl font-semibold text-gray-800">{loading ? '...' : pcStatistics.total}</p>
+          </div>
         </div>
       </div>
-    </div>
-  </>
-);
+      
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Recent PC Registrations - Updated with real data */}
+        <div className="bg-white rounded-lg shadow">
+          <div className="p-4 border-b border-gray-200">
+            <h2 className="font-semibold text-gray-800">Recent PC Registrations</h2>
+          </div>
+          <div className="p-4">
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
+                <span className="ml-3 text-gray-600">Loading...</span>
+              </div>
+            ) : recentPCRegistrations.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <UserCheck className="mx-auto h-12 w-12 text-gray-300 mb-4" />
+                <p>No recent PC registrations</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {recentPCRegistrations.map((pc) => (
+                  <div key={pc.id} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg border border-gray-100">
+                    <div className="flex items-center">
+                      <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                        <User size={16} />
+                      </div>
+                      <div className="ml-3">
+                        <p className="text-sm font-medium text-gray-800">{pc.name}</p>
+                        <div className="flex items-center text-xs text-gray-500">
+                          <Mail size={12} className="mr-1" />
+                          {pc.collegeEmail}
+                        </div>
+                        <p className="text-xs text-gray-400 mt-1">
+                          Registered: {formatDate(pc.registrationDate)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex space-x-2">
+                      <button 
+                        onClick={() => handleQuickApprove(pc.id)}
+                        className="px-3 py-1 bg-green-100 text-green-700 text-xs rounded-full hover:bg-green-200 transition-colors"
+                        title="Quick Approve"
+                      >
+                        Approve
+                      </button>
+                      <button 
+                        onClick={() => handleQuickReject(pc.id)}
+                        className="px-3 py-1 bg-red-100 text-red-700 text-xs rounded-full hover:bg-red-200 transition-colors"
+                        title="Quick Reject"
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <button 
+              onClick={() => navigate('/tpo/pc-approvals')}
+              className="mt-4 text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+            >
+              View All Registrations
+            </button>
+          </div>
+        </div>
+
+        {/* Recent Notices - Keep as placeholder for now */}
+        <div className="bg-white rounded-lg shadow">
+          <div className="p-4 border-b border-gray-200">
+            <h2 className="font-semibold text-gray-800">Recent Notices</h2>
+          </div>
+          <div className="p-4">
+            <div className="space-y-4">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="border-l-4 border-indigo-500 bg-indigo-50 p-3 rounded-r-lg">
+                  <p className="text-sm font-medium text-gray-800">Notice Title {i}</p>
+                  <p className="text-xs text-gray-500 mt-1">Posted by Company {i} • May {10 + i}, 2025</p>
+                  <div className="mt-2 flex justify-end space-x-2">
+                    <button className="px-3 py-1 bg-white text-green-700 border border-green-300 text-xs rounded-full">
+                      Approve
+                    </button>
+                    <button className="px-3 py-1 bg-white text-red-700 border border-red-300 text-xs rounded-full">
+                      Reject
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button className="mt-4 text-sm text-indigo-600 hover:text-indigo-800 font-medium">
+              View All Notices
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
 
 // Placeholder Content Component
 const PlaceholderContent = ({ title, icon }) => (

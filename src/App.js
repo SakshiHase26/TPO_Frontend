@@ -20,7 +20,6 @@ import ProtectedRoute from './components/TPO/ProtectedRoute';
 
 // Admin Pages
 import Dashboard from './pages/Admin/dashboard';
-// import TpoTable from './pages/Admin/tpo';
 import StudentTable from './pages/Admin/student';
 import VerifyTpos from './pages/Admin/verify_tpo';
 import ManageTpos from './pages/Admin/manage_tpos';
@@ -35,8 +34,14 @@ import TPORegisterForm from './pages/TPO/RegisterPage';
 import TPOLogin from './pages/TPO/LoginPage';
 import TpoDashboard from './pages/TPO/Dashboard';
 import PCApprovals from './pages/TPO/PCApprovals';
+import TPOApprovalDashboard from './pages/TPO/TPOApprovalDashboard';
 import AdminApprovalPage from './pages/TPO/AdminApprovalPage';
 import Success from './pages/TPO/Success';
+
+// PC Pages
+import PCDashboard from './pages/PC/Dashboard';
+import PCLogin from './pages/PC/Login';
+import PCRegister from './pages/PC/Register';
 
 // Landing Page
 import LandingPage from './pages/LandingPage';
@@ -46,6 +51,7 @@ const getCurrentUser = () => {
   const tpoUserStr = localStorage.getItem('tpoUser');
   const adminUserStr = localStorage.getItem('adminUser');
   const userStr = localStorage.getItem('user');
+  const pcUserStr = localStorage.getItem('pcUser');
   
   let user = null;
 
@@ -53,16 +59,23 @@ const getCurrentUser = () => {
   if (tpoUserStr) {
     try {
       user = JSON.parse(tpoUserStr);
-      user.role = 'tpo'; // Ensure role is set
+      user.role = 'tpo';
     } catch (e) {
       localStorage.removeItem('tpoUser');
     }
   } else if (adminUserStr) {
     try {
       user = JSON.parse(adminUserStr);
-      user.role = 'admin'; // Ensure role is set
+      user.role = 'admin';
     } catch (e) {
-      localStorage.removeItem('adminUserStr');
+      localStorage.removeItem('adminUser');
+    }
+  } else if (pcUserStr) {
+    try {
+      user = JSON.parse(pcUserStr);
+      user.role = 'pc';
+    } catch (e) {
+      localStorage.removeItem('pcUser');
     }
   } else if (userStr) {
     try {
@@ -84,9 +97,13 @@ const RoleProtectedRoute = ({ children, allowedRoles }) => {
     return <Navigate to="/" replace />;
   }
 
-  // Check if user is approved (for TPO users)
-  if (user.role === 'tpo' && user.status !== 'approved') {
-    localStorage.removeItem('tpoUser');
+  // Check if user is approved (for TPO and PC users)
+  if ((user.role === 'tpo' || user.role === 'pc') && user.status !== 'approved') {
+    if (user.role === 'tpo') {
+      localStorage.removeItem('tpoUser');
+    } else if (user.role === 'pc') {
+      localStorage.removeItem('pcUser');
+    }
     return <Navigate to="/" replace />;
   }
 
@@ -97,6 +114,8 @@ const RoleProtectedRoute = ({ children, allowedRoles }) => {
       <Navigate to="/admin/dashboard" replace />
     ) : user.role === 'tpo' ? (
       <Navigate to="/tpo/dashboard" replace />
+    ) : user.role === 'pc' ? (
+      <Navigate to="/pc/dashboard" replace />
     ) : (
       <Navigate to="/" replace />
     );
@@ -127,11 +146,17 @@ const AdminLayout = ({ themeMode, toggleTheme, sidebarOpen, toggleSidebar, child
   );
 };
 
-// ✅ TPO Content Only Component (without layout)
-const TPOContentOnly = ({ children }) => {
+// ✅ PC Layout Component - Create a separate PC layout
+const PCLayout = ({ children }) => {
   return (
-    <div className="flex-1 p-4 overflow-y-auto">
-      {children}
+    <div className="min-h-screen bg-gray-50">
+      {/* PC specific header/navbar can go here */}
+      <div className="flex">
+        {/* PC specific sidebar can go here */}
+        <div className="flex-1">
+          {children}
+        </div>
+      </div>
     </div>
   );
 };
@@ -139,11 +164,11 @@ const TPOContentOnly = ({ children }) => {
 // ✅ Main Layout Router
 const MainLayout = ({ themeMode, toggleTheme, sidebarOpen, toggleSidebar }) => {
   const location = useLocation();
-  const user = getCurrentUser(); // ✅ FIXED: Now uses the helper function
+  const user = getCurrentUser();
   const userRole = user?.role;
 
   // Public routes that don't require authentication
-  const publicRoutes = ['/', '/register', '/login', '/admin/login', '/tpo/login'];
+  const publicRoutes = ['/', '/register', '/login', '/admin/login', '/tpo/login', '/pc/login', '/pc/register'];
   const isPublic = publicRoutes.includes(location.pathname);
 
   // ✅ Redirect to appropriate login if user is not present and not on public route
@@ -158,7 +183,8 @@ const MainLayout = ({ themeMode, toggleTheme, sidebarOpen, toggleSidebar }) => {
       <Route path="/register" element={<TPORegisterForm />} />
       <Route path="/tpo/login" element={<TPOLogin />} />
       <Route path="/admin/login" element={<AdminLogin />} />
-      
+      <Route path="/pc/login" element={<PCLogin />} />
+      <Route path="/pc/register" element={<PCRegister />} />
       {/* Legacy route redirects */}
       <Route path="/login" element={<Navigate to="/tpo/login" replace />} />
 
@@ -284,48 +310,55 @@ const MainLayout = ({ themeMode, toggleTheme, sidebarOpen, toggleSidebar }) => {
         }
       />
 
-      {/* ========== TPO ROUTES (TPODashboard handles its own routing) ========== */}
-      {/* <Route
-        path="/tpo/*"
+      {/* ========== TPO ROUTES ========== */}
+      <Route
+        path="/tpo/dashboard"
         element={
           <RoleProtectedRoute allowedRoles={['tpo']}>
-            <TpoDashboard />
+            
+              <TpoDashboard />
+           
           </RoleProtectedRoute>
         }
-      /> */}
-// In your App.js, replace the TPO ROUTES section with this:
+      />
+      <Route
+        path="/tpo/pc-approvals"
+        element={
+          <RoleProtectedRoute allowedRoles={['tpo']}>
+            
+              <PCApprovals />
+            
+          </RoleProtectedRoute>
+        }
+      />
+        <Route
+        path="/tpo/notice-approvals"
+        element={
+          <RoleProtectedRoute allowedRoles={['tpo']}>
+            <TpoLayout>
+              <TPOApprovalDashboard />
+            </TpoLayout>
+          </RoleProtectedRoute>
+        }
+      />
 
-{/* ========== TPO ROUTES ========== */}
-<Route
-  path="/tpo/dashboard"
-  element={
-    <RoleProtectedRoute allowedRoles={['tpo']}>
-      <TpoDashboard />
-    </RoleProtectedRoute>
-  }
-/>
-<Route
-  path="/tpo/pc-approvals"
-  element={
-    <RoleProtectedRoute allowedRoles={['tpo']}>
-      <PCApprovals />
-    </RoleProtectedRoute>
-  }
-/>
-{/* Add other specific TPO routes here */}
-<Route
-  path="/tpo/*"
-  element={
-    <RoleProtectedRoute allowedRoles={['tpo']}>
-      <TpoDashboard />
-    </RoleProtectedRoute>
-  }
-/>
-      {/* ========== SHARED ROUTES (Both Admin & TPO) ========== */}
+      {/* ========== PC ROUTES ========== */}
+      <Route
+        path="/pc/dashboard"
+        element={
+          <RoleProtectedRoute allowedRoles={['pc']}>
+            <PCLayout>
+              <PCDashboard />
+            </PCLayout>
+          </RoleProtectedRoute>
+        }
+      />
+
+      {/* ========== SHARED ROUTES (Admin, TPO & PC) ========== */}
       <Route
         path="/campus"
         element={
-          <RoleProtectedRoute allowedRoles={['tpo', 'admin']}>
+          <RoleProtectedRoute allowedRoles={['tpo', 'admin', 'pc']}>
             {userRole === 'admin' ? (
               <AdminLayout 
                 themeMode={themeMode} 
@@ -335,6 +368,10 @@ const MainLayout = ({ themeMode, toggleTheme, sidebarOpen, toggleSidebar }) => {
               >
                 <CampusManager />
               </AdminLayout>
+            ) : userRole === 'pc' ? (
+              <PCLayout>
+                <CampusManager />
+              </PCLayout>
             ) : (
               <TpoLayout>
                 <CampusManager />
@@ -346,7 +383,7 @@ const MainLayout = ({ themeMode, toggleTheme, sidebarOpen, toggleSidebar }) => {
       <Route
         path="/stream"
         element={
-          <RoleProtectedRoute allowedRoles={['tpo', 'admin']}>
+          <RoleProtectedRoute allowedRoles={['tpo', 'admin', 'pc']}>
             {userRole === 'admin' ? (
               <AdminLayout 
                 themeMode={themeMode} 
@@ -356,6 +393,10 @@ const MainLayout = ({ themeMode, toggleTheme, sidebarOpen, toggleSidebar }) => {
               >
                 <StreamManager />
               </AdminLayout>
+            ) : userRole === 'pc' ? (
+              <PCLayout>
+                <StreamManager />
+              </PCLayout>
             ) : (
               <TpoLayout>
                 <StreamManager />
@@ -374,6 +415,8 @@ const MainLayout = ({ themeMode, toggleTheme, sidebarOpen, toggleSidebar }) => {
             <Navigate to="/admin/dashboard" />
           ) : user?.role === 'tpo' ? (
             <Navigate to="/tpo/dashboard" />
+          ) : user?.role === 'pc' ? (
+            <Navigate to="/pc/dashboard" />
           ) : (
             <Navigate to="/" />
           )
